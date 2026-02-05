@@ -133,30 +133,21 @@ defmodule PgEvolver do
         end
       end
 
-      defp version_query(:view) do
-        """
-        SELECT obj_description(c.oid)
-        FROM pg_class c
-        JOIN pg_namespace n ON n.oid = c.relnamespace
-        WHERE n.nspname = $1 AND c.relname = $2 AND c.relkind = 'v'
-        """
-      end
+      # Only generate the version_query clause for the specific tracking object type
+      # to avoid unused clause warnings from the type checker
+      defp version_query(object_type) do
+        relkind =
+          case object_type do
+            :view -> "v"
+            :table -> "r"
+            :materialized_view -> "m"
+          end
 
-      defp version_query(:table) do
         """
         SELECT obj_description(c.oid)
         FROM pg_class c
         JOIN pg_namespace n ON n.oid = c.relnamespace
-        WHERE n.nspname = $1 AND c.relname = $2 AND c.relkind = 'r'
-        """
-      end
-
-      defp version_query(:materialized_view) do
-        """
-        SELECT obj_description(c.oid)
-        FROM pg_class c
-        JOIN pg_namespace n ON n.oid = c.relnamespace
-        WHERE n.nspname = $1 AND c.relname = $2 AND c.relkind = 'm'
+        WHERE n.nspname = $1 AND c.relname = $2 AND c.relkind = '#{relkind}'
         """
       end
 
@@ -198,14 +189,17 @@ defmodule PgEvolver do
         module_name = __MODULE__ |> Module.split() |> Enum.take(1) |> Enum.join(".")
         escaped_comment = PgEvolver.Helpers.escape_string("#{module_name} version=#{version}")
 
-        object_keyword =
-          case object_type do
-            :view -> "VIEW"
-            :table -> "TABLE"
-            :materialized_view -> "MATERIALIZED VIEW"
-          end
+        object_keyword = object_type_keyword(object_type)
 
         execute("COMMENT ON #{object_keyword} #{escaped_prefix}.#{escaped_name} IS #{escaped_comment}")
+      end
+
+      defp object_type_keyword(type) do
+        case type do
+          :view -> "VIEW"
+          :table -> "TABLE"
+          :materialized_view -> "MATERIALIZED VIEW"
+        end
       end
     end
   end
