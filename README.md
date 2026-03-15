@@ -1,5 +1,9 @@
 # EctoEvolver
 
+[![Hex.pm](https://img.shields.io/hexpm/v/ecto_evolver.svg)](https://hex.pm/packages/ecto_evolver)
+[![Hex Docs](https://img.shields.io/badge/hex-docs-blue.svg)](https://hexdocs.pm/ecto_evolver)
+[![License](https://img.shields.io/hexpm/l/ecto_evolver.svg)](https://github.com/agoodway/ecto_evolver/blob/main/LICENSE)
+
 Versioned database migrations for Elixir libraries using Ecto.
 
 EctoEvolver provides infrastructure for library authors to ship versioned database schemas that support incremental upgrades. Inspired by how [Oban](https://hexdocs.pm/oban/Oban.Migration.html) handles migrations.
