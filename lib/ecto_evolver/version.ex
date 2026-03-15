@@ -1,66 +1,51 @@
-defmodule PgEvolver.Version do
+defmodule EctoEvolver.Version do
   @moduledoc """
   Behaviour and macro for defining version migration modules.
 
-  Each version module represents a single migration version with up/down functions
-  that execute SQL files from the priv directory.
+  Each version module represents a single migration step with `up/1` and `down/1`
+  that execute SQL files from the `priv/` directory.
 
   ## Usage
 
       defmodule MyLibrary.Migrations.V01 do
-        use PgEvolver.Version,
+        use EctoEvolver.Version,
           otp_app: :my_library,
           version: "01",
           sql_path: "my_library/sql/versions"
       end
 
-  This generates:
-
-      def up(opts), do: PgEvolver.SqlRunner.execute_sql_file(...)
-      def down(opts), do: PgEvolver.SqlRunner.execute_sql_file(...)
-
   ## Options
 
-    * `:otp_app` - Required. The OTP application containing the SQL files.
-    * `:version` - Required. Version string like "01", "02".
-    * `:sql_path` - Required. Path within priv to the SQL versions directory.
+    * `:otp_app` - The OTP application containing the SQL files.
+    * `:version` - Version string like `"01"`, `"02"`.
+    * `:sql_path` - Path within `priv/` to the SQL versions directory.
 
-  ## SQL File Structure
-
-  SQL files should be placed in:
+  ## SQL File Layout
 
       priv/<sql_path>/v<version>/v<version>_up.sql
       priv/<sql_path>/v<version>/v<version>_down.sql
-
-  For example:
-
-      priv/my_library/sql/versions/v01/v01_up.sql
-      priv/my_library/sql/versions/v01/v01_down.sql
-
   """
 
-  @doc """
-  Callback for applying the migration (create objects).
-  """
+  @doc "Applies the migration (create tables, views, etc.)."
   @callback up(keyword()) :: :ok
 
-  @doc """
-  Callback for rolling back the migration (drop objects).
-  """
+  @doc "Rolls back the migration (drop tables, views, etc.)."
   @callback down(keyword()) :: :ok
 
   @doc false
   defmacro __using__(opts) do
     quote bind_quoted: [opts: opts] do
-      @behaviour PgEvolver.Version
+      @behaviour EctoEvolver.Version
 
       @otp_app Keyword.fetch!(opts, :otp_app)
       @version Keyword.fetch!(opts, :version)
       @sql_path Keyword.fetch!(opts, :sql_path)
 
-      @impl PgEvolver.Version
+      @doc "Applies this version's migration by executing the up SQL file."
+      @impl EctoEvolver.Version
+      @spec up(keyword()) :: :ok
       def up(opts \\ []) do
-        PgEvolver.SqlRunner.execute_sql_file(
+        EctoEvolver.SqlRunner.execute_sql_file(
           otp_app: @otp_app,
           version: @version,
           direction: :up,
@@ -69,9 +54,11 @@ defmodule PgEvolver.Version do
         )
       end
 
-      @impl PgEvolver.Version
+      @doc "Rolls back this version's migration by executing the down SQL file."
+      @impl EctoEvolver.Version
+      @spec down(keyword()) :: :ok
       def down(opts \\ []) do
-        PgEvolver.SqlRunner.execute_sql_file(
+        EctoEvolver.SqlRunner.execute_sql_file(
           otp_app: @otp_app,
           version: @version,
           direction: :down,

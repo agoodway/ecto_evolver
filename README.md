@@ -1,25 +1,34 @@
-# PgEvolver
+# EctoEvolver
 
-Versioned PostgreSQL migrations for Elixir libraries using Ecto
+Versioned database migrations for Elixir libraries using Ecto.
 
-PgEvolver provides infrastructure for library authors to ship versioned database schemas that support incremental upgrades. Inspired by how [Oban](https://hexdocs.pm/oban/Oban.Migration.html) handles migrations.
+EctoEvolver provides infrastructure for library authors to ship versioned database schemas that support incremental upgrades. Inspired by how [Oban](https://hexdocs.pm/oban/Oban.Migration.html) handles migrations.
 
-![Walex mascot](pg_evolver.png)
+![EctoEvolver Lab](ecto_evolver.png)
 
 ## Philosophy
 
-PgEvolver uses **raw PostgreSQL** instead of Ecto's schema DSL. This enables:
+EctoEvolver uses **raw SQL** instead of Ecto's schema DSL. This enables:
 
-- **Advanced PostgreSQL features** - Functions, triggers, views, materialized views, RLS policies, and complex DDL that Ecto's DSL doesn't support
-- **Portability** - SQL files work outside Elixir/Ecto, making migrations usable with any PostgreSQL client
+- **Advanced database features** - Functions, triggers, views, materialized views, RLS policies, and complex DDL that Ecto's DSL doesn't support
+- **Portability** - SQL files work outside Elixir/Ecto, making migrations usable with any database client
 - **Transparency** - Standard `.sql` files are readable and auditable without Elixir knowledge
+
+## Adapters
+
+EctoEvolver uses an adapter system for database-specific operations. The adapter is auto-detected from your Ecto repo's configuration at runtime.
+
+**Currently supported:**
+- `EctoEvolver.Adapters.Postgres` — PostgreSQL (auto-detected, default)
+
+> **Future adapters**: The adapter architecture is designed to support other databases that Ecto supports (SQLite, MySQL, etc.). Contributions welcome.
 
 ## Installation
 
 ```elixir
 def deps do
   [
-    {:pg_evolver, "~> 0.1.0"}
+    {:ecto_evolver, "~> 0.1.0"}
   ]
 end
 ```
@@ -30,11 +39,11 @@ end
 
 ```elixir
 defmodule MyLibrary.Migration do
-  use PgEvolver,
+  use EctoEvolver,
     otp_app: :my_library,
     default_prefix: "my_library",
     versions: [MyLibrary.Migrations.V01],
-    tracking_object: {:view, "my_main_view"}
+    tracking_object: {:table, "my_main_table"}
 end
 ```
 
@@ -42,7 +51,7 @@ end
 
 ```elixir
 defmodule MyLibrary.Migrations.V01 do
-  use PgEvolver.Version,
+  use EctoEvolver.Version,
     otp_app: :my_library,
     version: "01",
     sql_path: "my_library/sql/versions"
@@ -67,11 +76,10 @@ CREATE SCHEMA IF NOT EXISTS $SCHEMA$;
 
 --SPLIT--
 
-CREATE VIEW $SCHEMA$.my_view AS SELECT 1;
-
---SPLIT--
-
-COMMENT ON VIEW $SCHEMA$.my_view IS 'MyLibrary version=1';
+CREATE TABLE $SCHEMA$.my_table (
+  id BIGSERIAL PRIMARY KEY,
+  name TEXT NOT NULL
+);
 ```
 
 ### 4. Users Generate an Ecto Migration
@@ -87,14 +95,15 @@ end
 
 ## Options
 
-### `use PgEvolver`
+### `use EctoEvolver`
 
 - `:otp_app` - OTP application containing SQL files in `priv/`
 - `:default_prefix` - Default schema name
 - `:versions` - List of version modules in order `[V01, V02, ...]`
 - `:tracking_object` - `{:view | :table | :materialized_view, "name"}` for version tracking
+- `:adapter` - Adapter module (optional, auto-detected from repo)
 
-### `use PgEvolver.Version`
+### `use EctoEvolver.Version`
 
 - `:otp_app` - OTP application containing SQL files
 - `:version` - Version string like `"01"`, `"02"`
@@ -102,13 +111,13 @@ end
 
 ## Version Tracking
 
-Versions are tracked via PostgreSQL comments on the tracking object:
+Version tracking is adapter-specific. The PostgreSQL adapter uses object comments:
 
 ```sql
-COMMENT ON VIEW schema.my_view IS 'MyLibrary version=1';
+COMMENT ON TABLE schema.my_table IS 'MyLibrary version=1';
 ```
 
-This allows PgEvolver to detect the current version and apply only necessary migrations during upgrades.
+This allows EctoEvolver to detect the current version and apply only necessary migrations during upgrades.
 
 ## License
 
